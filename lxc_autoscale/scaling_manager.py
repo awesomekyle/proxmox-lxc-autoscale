@@ -1,4 +1,4 @@
-from config import config
+from config import LXC_TIER_ASSOCIATIONS, config
 import logging  # For logging events and errors
 from datetime import datetime, timedelta  # For handling dates and times
 from lxc_utils import (  # Import necessary utility functions related to LXC management
@@ -193,7 +193,7 @@ def adjust_resources(containers, energy_mode):
             logging.info(f"Container {ctid} is ignored. Skipping resource adjustment.")
             continue
 
-        config = DEFAULTS.get(f"TIER_{ctid}", DEFAULTS)
+        config = DEFAULTS | LXC_TIER_ASSOCIATIONS.get(ctid, DEFAULTS)
         cpu_upper = config['cpu_upper_threshold']
         cpu_lower = config['cpu_lower_threshold']
         mem_upper = config['memory_upper_threshold']
