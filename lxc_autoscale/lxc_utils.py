@@ -1,4 +1,4 @@
-from config import config
+from config import LXC_TIER_ASSOCIATIONS, config
 import subprocess  # For executing shell commands
 import logging  # For logging events and errors
 import json  # For handling JSON data
@@ -7,7 +7,7 @@ from datetime import datetime  # For working with dates and times
 from config import get_config_value, LOG_FILE, DEFAULTS, BACKUP_DIR, PROXMOX_HOSTNAME, IGNORE_LXC  # Configuration imports
 from threading import Lock  # For thread-safe operations
 import paramiko
-import time 
+import time
 
 # Initialize a thread lock for safe concurrent access
 lock = Lock()
@@ -172,53 +172,42 @@ def log_json_event(ctid, action, resource_change):
 
 def get_total_cores():
     """
-    Calculate the total available CPU cores on the host after reserving a percentage.
+    Calculate the total CPU cores on the host.
 
     Returns:
-        int: The number of available CPU cores.
+        int: The total number of available CPU cores.
     """
     total_cores = int(run_command("nproc"))
-    reserved_cores = max(1, int(total_cores * DEFAULTS['reserve_cpu_percent'] / 100))
-    available_cores = total_cores - reserved_cores
-    logging.debug(
-        f"Total cores: {total_cores}, Reserved cores: {reserved_cores}, "
-        f"Available cores: {available_cores}"
-    )
-    return available_cores
+    return total_cores
 
 def get_total_memory():
     """
-    Calculate the total available memory on the host after reserving a fixed amount.
+    Calculate the total memory on the host.
 
     Returns:
-        int: The amount of available memory in MB.
+        int: The amount of total memory in MB.
     """
     total_memory = int(run_command("free -m | awk '/Mem:/ {print $2}'"))
-    available_memory = max(0, total_memory - DEFAULTS['reserve_memory_mb'])
-    logging.debug(
-        f"Total memory: {total_memory}MB, Reserved memory: {DEFAULTS['reserve_memory_mb']}MB, "
-        f"Available memory: {available_memory}MB"
-    )
-    return available_memory
+    return total_memory
 
 
 def get_cpu_usage(ctid):
     """
     Retrieve the CPU usage of a container using multiple methods with fallbacks.
-    
+
     Args:
         ctid (str): The container ID.
-    
+
     Returns:
         float: The CPU usage percentage, or 0.0 if all methods fail.
     """
     def loadavg_method(ctid):
         """
         Retrieve CPU usage based on the system's load average.
-        
+
         Args:
             ctid (str): The container ID.
-        
+
         Returns:
             float: The CPU usage percentage.
         """
@@ -226,15 +215,15 @@ def get_cpu_usage(ctid):
         cmd_loadavg = f"pct exec {ctid} -- cat /proc/loadavg"
         loadavg_output = run_command(cmd_loadavg)
         loadavg = float(loadavg_output.split()[0])  # 1-minute load average
-        
+
         # Get number of CPUs
         cmd_nproc = f"pct exec {ctid} -- nproc"
         nproc_output = run_command(cmd_nproc)
         num_cpus = int(nproc_output)
-        
+
         if num_cpus == 0:
             raise ValueError("Number of CPUs is zero.")
-        
+
         # Calculate CPU usage percentage
         cpu_usage = (loadavg / num_cpus) * 100
         cpu_usage = min(cpu_usage, 100.0)  # Cap at 100%
@@ -243,10 +232,10 @@ def get_cpu_usage(ctid):
     def load_method(ctid):
         """
         Retrieve CPU usage by reading /proc/stat.
-        
+
         Args:
             ctid (str): The container ID.
-        
+
         Returns:
             float: The CPU usage percentage.
         """
@@ -275,10 +264,10 @@ def get_cpu_usage(ctid):
     def cgroup_method(ctid):
         """
         Retrieve CPU usage from cgroup statistics.
-        
+
         Args:
             ctid (str): The container ID.
-        
+
         Returns:
             float: The CPU usage percentage.
         """
@@ -299,10 +288,10 @@ def get_cpu_usage(ctid):
     def top_method(ctid):
         """
         Retrieve CPU usage using the top command.
-        
+
         Args:
             ctid (str): The container ID.
-        
+
         Returns:
             float: The CPU usage percentage.
         """
@@ -320,10 +309,10 @@ def get_cpu_usage(ctid):
     def ps_method(ctid):
         """
         Retrieve CPU usage by aggregating the CPU usage of all processes.
-        
+
         Args:
             ctid (str): The container ID.
-        
+
         Returns:
             float: The CPU usage percentage.
         """

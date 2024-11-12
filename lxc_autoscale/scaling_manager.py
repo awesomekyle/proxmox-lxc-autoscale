@@ -164,6 +164,15 @@ def adjust_resources(containers, energy_mode):
     available_cores = total_cores - reserved_cores
     available_memory = total_memory - reserved_memory
 
+    logging.debug(
+        f"Total cores: {total_cores}, Reserved cores: {reserved_cores}, "
+        f"Available cores: {available_cores}"
+    )
+
+    logging.debug(
+        f"Total memory: {total_memory}MB, Reserved memory: {DEFAULTS['reserve_memory_mb']}MB, "
+        f"Available memory: {available_memory}MB"
+    )
     logging.info(f"Initial resources before adjustments: {available_cores} cores, {available_memory} MB memory")
 
     # Print current resource usage for all running LXC containers
@@ -172,9 +181,9 @@ def adjust_resources(containers, energy_mode):
         rounded_cpu_usage = round(usage['cpu'], 2)
         rounded_mem_usage = round(usage['mem'], 2)
         total_mem_allocated = usage['initial_memory']
-        free_mem_percent = round(100 - ((rounded_mem_usage / total_mem_allocated) * 100), 2)
+        free_mem_percent = round(100 - rounded_mem_usage, 2)
 
-        logging.info(f"Container {ctid}: CPU usage: {rounded_cpu_usage}%, Memory usage: {rounded_mem_usage}MB "
+        logging.info(f"Container {ctid}: CPU usage: {rounded_cpu_usage}%, Memory usage: {round(rounded_mem_usage*(1/100)*total_mem_allocated)}MB "
                      f"({free_mem_percent}% free of {total_mem_allocated}MB total), "
                      f"Initial cores: {usage['initial_cores']}, Initial memory: {total_mem_allocated}MB")
 
