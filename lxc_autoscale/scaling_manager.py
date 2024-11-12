@@ -46,6 +46,23 @@ def generate_cloned_hostname(base_name, clone_number):
     """
     return f"{base_name}-cloned-{clone_number}"
 
+def calculate_resource_delta(current, lower_threshold, upper_threshold, min_increment, max_increment):
+    """
+    Calculate the increment for the resource scaling. It's a simple lerp between min-max based on
+    how far between 0-lower_threshold or upper_threshold-100 the current value is.
+    """
+    if current >= lower_threshold and current <= upper_threshold:
+        return 0
+    if current < lower_threshold:
+        proportion = 1 - (current / lower_threshold)
+    else:
+        proportion = (current - upper_threshold) / (100-upper_threshold)
+    assert(proportion >= 0)
+    assert(proportion <= 1)
+    increment_delta = max_increment-min_increment
+    ratio_along_increment = increment_delta * proportion
+    return round(min_increment + ratio_along_increment)
+
 def calculate_increment(current, upper_threshold, min_increment, max_increment):
     """
     Calculate the increment for resource scaling based on current usage and thresholds.
@@ -92,7 +109,7 @@ def get_behaviour_multiplier():
         return 2.0
     return 1.0
 
-def scale_memory(ctid, mem_usage, mem_upper, mem_lower, current_memory, min_memory, available_memory, config):
+def scale_memory(ctid, mem_usage, mem_upper, mem_lower, current_memory, min_memory, max_memory, available_memory, config):
     """
     Adjust memory for a container based on current usage.
 
@@ -103,6 +120,7 @@ def scale_memory(ctid, mem_usage, mem_upper, mem_lower, current_memory, min_memo
         mem_lower (float): Lower memory threshold.
         current_memory (int): Currently allocated memory.
         min_memory (int): Minimum memory allowed.
+        max_memory (int): Maximum memory allowed.
         available_memory (int): Available memory.
         config (dict): Configuration dictionary.
 
@@ -135,7 +153,7 @@ def scale_memory(ctid, mem_usage, mem_upper, mem_lower, current_memory, min_memo
         )
         if decrease_amount > 0:
             logging.info(f"Decreasing memory for container {ctid} by {decrease_amount}MB...")
-            new_memory = current_memory - decrease_amount
+            new_memory = min(current_memory - decrease_amount, max_memory)
             run_command(f"pct set {ctid} -memory {new_memory}")
             available_memory += decrease_amount
             memory_changed = True
@@ -201,6 +219,7 @@ def adjust_resources(containers, energy_mode):
         min_cores = config['min_cores']
         max_cores = config['max_cores']
         min_memory = config['min_memory']
+        max_memory = config['max_memory']
 
         cpu_usage = usage['cpu']
         mem_usage = usage['mem']
@@ -215,7 +234,7 @@ def adjust_resources(containers, energy_mode):
 
         # Adjust CPU cores if needed
         if cpu_usage > cpu_upper:
-            increment = calculate_increment(cpu_usage, cpu_upper, config['core_min_increment'], config['core_max_increment'])
+            increment = calculate_resource_delta(cpu_usage, cpu_lower, cpu_upper, config['core_min_increment'], config['core_max_increment'])
             new_cores = current_cores + increment
 
             logging.info(f"Container {ctid} - CPU usage exceeds upper threshold.")
@@ -231,7 +250,7 @@ def adjust_resources(containers, energy_mode):
                 logging.warning(f"Container {ctid} - Not enough available cores to increase.")
 
         elif cpu_usage < cpu_lower and current_cores > min_cores:
-            decrement = calculate_decrement(cpu_usage, cpu_lower, current_cores, config['core_min_increment'], min_cores)
+            decrement = calculate_resource_delta(cpu_usage, cpu_lower, cpu_upper, config['core_min_increment'], config['core_max_increment'])
             new_cores = max(min_cores, current_cores - decrement)
 
             logging.info(f"Container {ctid} - CPU usage below lower threshold.")
@@ -248,7 +267,7 @@ def adjust_resources(containers, energy_mode):
 
         # Adjust memory if needed
         available_memory, memory_changed = scale_memory(
-            ctid, mem_usage, mem_upper, mem_lower, current_memory, min_memory, available_memory, config
+            ctid, mem_usage, mem_upper, mem_lower, current_memory, min_memory, max_memory, available_memory, config
         )
 
         # Apply energy efficiency mode if enabled

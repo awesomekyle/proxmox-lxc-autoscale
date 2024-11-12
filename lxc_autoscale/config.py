@@ -50,6 +50,9 @@ LXC_TIER_ASSOCIATIONS = {}
 for section, tier_config in config.items():
     if section.startswith('TIER_'):
         nodes = tier_config.get('lxc_containers', [])
+        # max_memory isn't specified in DEFAULT, so add a massive default value here
+        if 'max_memory' not in tier_config:
+            tier_config['max_memory'] = 1024*1024*1024
         for ctid in nodes:
             LXC_TIER_ASSOCIATIONS[str(ctid)] = tier_config
 
