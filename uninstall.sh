@@ -113,4 +113,4 @@ done
 log "INFO" "LXC AutoScale uninstallation complete!"
 log "INFO" "${THANKS} ${BOLD}Thank you for using LXC AutoScale!${RESET}"
 log "INFO" "${BOLD}For more information and updates, visit the repository:${RESET}"
-log "INFO" "${URL} ${BOLD}https://github.com/fabriziosalmi/proxmox-lxc-autoscale${RESET}"
+log "INFO" "${URL} ${BOLD}https://github.com/awesomekyle/proxmox-lxc-autoscale${RESET}"

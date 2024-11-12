@@ -1,6 +1,6 @@
 [Unit]
 Description=LXC AutoScale Daemon
-Documentation=https://github.com/fabriziosalmi/proxmox-lxc-autoscale
+Documentation=https://github.com/awesomekyle/proxmox-lxc-autoscale
 After=network.target
 
 [Service]
